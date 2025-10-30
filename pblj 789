@@ -1,0 +1,458 @@
+# Spring + Hibernate (JPA) CRUD Example
+
+A complete, minimal Spring Boot application demonstrating:
+
+* Dependency Injection with Spring
+* CRUD operations using Spring Data JPA (Hibernate as the JPA provider)
+* Transaction management with @Transactional
+* REST endpoints for the entity
+* In-memory H2 database for easy testing
+
+---
+
+## Project structure (logical)
+
+```
+spring-hibernate-crud/
+├── pom.xml
+├── src/main/resources/application.properties
+└── src/main/java/com/example/demo/
+    ├── DemoApplication.java
+    ├── controller/
+    │   └── UserController.java
+    ├── dto/
+    │   └── UserDTO.java
+    ├── entity/
+    │   └── User.java
+    ├── repository/
+    │   └── UserRepository.java
+    └── service/
+        └── UserService.java
+```
+
+---
+
+## pom.xml
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>spring-hibernate-crud</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.1.4</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA (Hibernate) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- H2 in-memory database for development/demo -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Optional: validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Devtools (optional) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+---
+
+## src/main/resources/application.properties
+
+```properties
+# H2
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+spring.datasource.username=sa
+spring.datasource.password=
+spring.datasource.driver-class-name=org.h2.Driver
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# H2 Console (dev)
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+server.port=8080
+```
+
+---
+
+## DemoApplication.java
+
+```java
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class DemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
+}
+```
+
+---
+
+## entity/User.java
+
+```java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    public User() {}
+
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+}
+```
+
+---
+
+## repository/UserRepository.java
+
+```java
+package com.example.demo.repository;
+
+import com.example.demo.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+}
+```
+
+---
+
+## dto/UserDTO.java (simple DTO for API)
+
+```java
+package com.example.demo.dto;
+
+public class UserDTO {
+    private Long id;
+    private String name;
+    private String email;
+
+    public UserDTO() {}
+
+    public UserDTO(Long id, String name, String email) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+
+---
+
+## service/UserService.java
+
+```java
+package com.example.demo.service;
+
+import com.example.demo.entity.User;
+import com.example.demo.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    // Constructor injection (preferred)
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // Read-only transaction
+    @Transactional(readOnly = true)
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    @Transactional
+    public User create(User user) {
+        // Example business rule: prevent duplicate emails
+        userRepository.findByEmail(user.getEmail()).ifPresent(u -> {
+            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
+        });
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User update(Long id, User updated) {
+        User existing = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id));
+
+        existing.setName(updated.getName());
+        existing.setEmail(updated.getEmail());
+        return userRepository.save(existing);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new IllegalArgumentException("User not found with id: " + id);
+        }
+        userRepository.deleteById(id);
+    }
+}
+```
+
+---
+
+## controller/UserController.java
+
+```java
+package com.example.demo.controller;
+
+import com.example.demo.dto.UserDTO;
+import com.example.demo.entity.User;
+import com.example.demo.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    private UserDTO toDTO(User u) {
+        return new UserDTO(u.getId(), u.getName(), u.getEmail());
+    }
+
+    private User fromDTO(UserDTO dto) {
+        User u = new User();
+        u.setName(dto.getName());
+        u.setEmail(dto.getEmail());
+        return u;
+    }
+
+    @GetMapping
+    public List<UserDTO> list() {
+        return userService.findAll().stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> get(@PathVariable Long id) {
+        return userService.findById(id)
+                .map(u -> ResponseEntity.ok(toDTO(u)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDTO> create(@Valid @RequestBody UserDTO dto) {
+        User saved = userService.create(fromDTO(dto));
+        return ResponseEntity.created(URI.create("/api/users/" + saved.getId())).body(toDTO(saved));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> update(@PathVariable Long id, @Valid @RequestBody UserDTO dto) {
+        try {
+            User saved = userService.update(id, fromDTO(dto));
+            return ResponseEntity.ok(toDTO(saved));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        try {
+            userService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+}
+```
+
+---
+
+## README – quick usage
+
+1. Build and run:
+
+```bash
+mvn spring-boot:run
+```
+
+2. Try endpoints (examples):
+
+Create user:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Alice","email":"alice@example.com"}' http://localhost:8080/api/users
+```
+
+Get all:
+
+```bash
+curl http://localhost:8080/api/users
+```
+
+Get one:
+
+```bash
+curl http://localhost:8080/api/users/1
+```
+
+Update:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" -d '{"name":"Alice A","email":"alice.a@example.com"}' http://localhost:8080/api/users/1
+```
+
+Delete:
+
+```bash
+curl -X DELETE http://localhost:8080/api/users/1
+```
+
+---
+
+## Notes & next steps
+
+* For production, use a real RDBMS (MySQL, PostgreSQL), connection pooling, and proper error handling.
+* Add DTO validation annotations (e.g., `@NotBlank`, `@Email`) for input validation.
+* Add global exception handlers (`@ControllerAdvice`) to map exceptions to clean responses.
+* Consider using MapStruct for DTO mapping, and Lombok to reduce boilerplate.
+
+---
+
+If you want, I can also:
+
+* convert this to a Gradle build
+* add unit/integration tests
+* switch to PostgreSQL and show Docker compose
